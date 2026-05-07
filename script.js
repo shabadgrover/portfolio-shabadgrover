@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
 
     /* --- Typewriter Effect --- */
     const typingRole = document.getElementById('typing-role');
@@ -10,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function type() {
         const currentRole = roles[roleIndex];
-        
+
         if (isDeleting) {
             typingRole.textContent = currentRole.substring(0, charIndex - 1);
             charIndex--;
@@ -125,10 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* --- Active Navigation Link Update on Scroll --- */
     const sections = document.querySelectorAll('section');
-    
+
     window.addEventListener('scroll', () => {
         let current = '';
-        
+
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
             const sectionHeight = section.clientHeight;
@@ -161,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const seeMoreBtn = document.getElementById('see-more-btn');
     const seeLessBtn = document.getElementById('see-less-btn');
     const hiddenProjects = document.querySelectorAll('.hidden-project');
-    
+
     if (seeMoreBtn && seeLessBtn) {
         seeMoreBtn.addEventListener('click', () => {
             hiddenProjects.forEach(project => {
@@ -179,82 +183,119 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             seeLessBtn.style.display = 'none';
             seeMoreBtn.style.display = 'flex';
-            
+
             // Scroll back to projects section
             document.getElementById('projects').scrollIntoView({ behavior: 'smooth' });
         });
     }
 
-    /* --- Contact Form Handling (EmailJS) --- */
-    // Initialize EmailJS (Replace 'YOUR_PUBLIC_KEY' with your actual key from EmailJS dashboard)
-    (function() {
-        emailjs.init({
-          publicKey: "YOUR_PUBLIC_KEY",
-        });
-    })();
+    /* --- New Contact Logic (GSAP & EmailJS) --- */
 
-    const contactForm = document.querySelector('.contact-form');
-    if (contactForm) {
-        contactForm.addEventListener('submit', (e) => {
+    // 1. GSAP Entrance Animation
+    if (window.gsap && window.ScrollTrigger) {
+        gsap.from("#contact-hub", {
+            y: 60,
+            opacity: 0,
+            duration: 1.5,
+            ease: "power4.out",
+            scrollTrigger: {
+                trigger: "#contact-hub",
+                start: "top 85%",
+            }
+        });
+
+        // 2. Magnetic Buttons
+        const magneticBtns = document.querySelectorAll('.social-magnetic');
+        magneticBtns.forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+
+                gsap.to(btn, {
+                    x: x * 0.4,
+                    y: y * 0.4,
+                    duration: 0.3,
+                    ease: "power2.out"
+                });
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                gsap.to(btn, {
+                    x: 0,
+                    y: 0,
+                    duration: 0.7,
+                    ease: "elastic.out(1, 0.3)"
+                });
+            });
+        });
+    }
+
+    // 3. EmailJS Submission
+    const SERVICE_ID = "service_gnso5ld";
+    const TEMPLATE_ID = "template_lzg67tr";
+    const PUBLIC_KEY = "TFYV4mBQPN8ougjvm";
+
+    if (window.emailjs) {
+        window.emailjs.init({ publicKey: PUBLIC_KEY });
+    }
+
+    const newContactForm = document.getElementById('contact-form-new');
+    if (newContactForm) {
+        newContactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const submitBtn = contactForm.querySelector('.submit-btn');
-            const originalBtnContent = submitBtn.innerHTML;
-            
-            // Collect Form Data
-            const templateParams = {
-                from_name: document.getElementById('name').value,
-                from_email: document.getElementById('email').value,
-                subject: document.getElementById('subject').value,
-                message: document.getElementById('message').value
-            };
+
+            const submitBtn = document.getElementById('contact-submit');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const statusContainer = document.getElementById('status-container');
+            const successEl = document.getElementById('status-success');
+            const errorEl = document.getElementById('status-error');
+
+            const originalText = btnText.textContent;
 
             // Loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            btnText.textContent = "Transmitting...";
             submitBtn.disabled = true;
 
-            // Send via EmailJS (Replace 'YOUR_SERVICE_ID' and 'YOUR_TEMPLATE_ID' with your actual IDs)
-            emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
-                .then(() => {
-                    // Success state
-                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
-                    submitBtn.style.backgroundColor = '#27c93f';
-                    submitBtn.style.borderColor = '#27c93f';
-                    
-                    // Reset form
-                    const senderName = document.getElementById('name').value;
-                    contactForm.reset();
+            const formData = {
+                from_name: document.getElementById('contact-name').value,
+                email: document.getElementById('contact-email').value,
+                title: document.getElementById('contact-subject').value,
+                message: document.getElementById('contact-message').value,
+            };
 
-                    // Show success message
-                    const successMsg = document.createElement('div');
-                    successMsg.className = 'form-success-msg';
-                    successMsg.innerHTML = `
-                        <div style="margin-top: 20px; padding: 15px; background: rgba(39, 201, 63, 0.1); border: 1px solid #27c93f; border-radius: 8px; text-align: center; animation: fadeIn 0.5s ease forwards;">
-                            <h4 style="color: #27c93f; margin-bottom: 5px;">Thank you, ${senderName || 'there'}!</h4>
-                            <p style="font-size: 0.9rem;">Your message has been sent successfully. I'll get back to you soon.</p>
-                        </div>
-                    `;
-                    contactForm.appendChild(successMsg);
+            try {
+                await emailjs.send(SERVICE_ID, TEMPLATE_ID, formData, PUBLIC_KEY);
 
-                    // Revert button after 4 seconds
-                    setTimeout(() => {
-                        submitBtn.innerHTML = originalBtnContent;
-                        submitBtn.style.backgroundColor = '';
-                        submitBtn.style.borderColor = '';
-                        submitBtn.disabled = false;
-                        if (successMsg) successMsg.remove();
-                    }, 4000);
-                }, (error) => {
-                    console.error('FAILED...', error);
-                    submitBtn.innerHTML = '<i class="fas fa-times"></i> Error Sending';
-                    submitBtn.style.backgroundColor = '#ff5f56';
-                    
-                    setTimeout(() => {
-                        submitBtn.innerHTML = originalBtnContent;
-                        submitBtn.style.backgroundColor = '';
-                        submitBtn.disabled = false;
-                    }, 3000);
-                });
+                // Success
+                btnText.textContent = "Success!";
+                successEl.classList.remove('hidden');
+                errorEl.classList.add('hidden');
+                statusContainer.classList.add('show');
+
+                newContactForm.reset();
+
+                setTimeout(() => {
+                    statusContainer.classList.remove('show');
+                    btnText.textContent = originalText;
+                    submitBtn.disabled = false;
+                }, 4000);
+
+            } catch (err) {
+                console.error("EmailJS Error:", err);
+
+                // Error
+                btnText.textContent = "Failed";
+                errorEl.classList.remove('hidden');
+                successEl.classList.add('hidden');
+                statusContainer.classList.add('show');
+
+                setTimeout(() => {
+                    statusContainer.classList.remove('show');
+                    btnText.textContent = originalText;
+                    submitBtn.disabled = false;
+                }, 4000);
+            }
         });
     }
 
